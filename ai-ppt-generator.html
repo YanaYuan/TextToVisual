@@ -6,9 +6,14 @@
     <title>AI PPT组件生成器</title>
     <link href="https://picture-search.tiangong.cn/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+    <!-- 备用CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" onerror="console.log('Tailwind CSS备用CDN加载失败')"/>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet" onerror="console.log('Font Awesome备用CDN加载失败')"/>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <!-- 添加Tesseract.js用于本地OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.0/dist/tesseract.min.js"></script>
+    <!-- 本地配置文件 - 仅在本地开发时使用 -->
+    <script src="config.local.js" onerror="console.log('本地配置文件未找到，将使用默认配置或环境变量')"></script>
     <style>
         * {
             margin: 0;
@@ -420,6 +425,247 @@
             left: 6px;
         }
 
+        /* 预览组件样式 */
+        .generated-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            color: #1f2937;
+            min-height: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .preview-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .preview-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0;
+        }
+
+        /* 简约列表组件样式 */
+        .steps-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .step-indicator {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            background: #3b82f6;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step-number {
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 8px 0;
+        }
+
+        .step-description {
+            font-size: 14px;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* 图标列表组件样式 */
+        .values-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .value-item {
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .value-icon {
+            width: 40px;
+            height: 40px;
+            background: #10b981;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .value-content {
+            flex: 1;
+        }
+
+        .value-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 8px 0;
+        }
+
+        .value-description {
+            font-size: 14px;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* 表格组件样式 */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .preview-table th {
+            background: #f3f4f6;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .preview-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #6b7280;
+        }
+
+        .preview-table tr:hover {
+            background: #f9fafb;
+        }
+
+        /* 图表组件样式 */
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        #chart-area {
+            width: 100%;
+            height: 300px;
+        }
+
+        /* 对比组件样式 */
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .comparison-side {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 25px;
+        }
+
+        .left-side {
+            border-left: 4px solid #10b981;
+        }
+
+        .right-side {
+            border-left: 4px solid #ef4444;
+        }
+
+        .side-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .side-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .side-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .side-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .side-item i {
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .left-side .side-item i {
+            color: #10b981;
+        }
+
+        .right-side .side-item i {
+            color: #ef4444;
+        }
+
+        .comparison-divider {
+            width: 2px;
+            background: linear-gradient(to bottom, #10b981, #ef4444);
+            border-radius: 2px;
+            min-height: 200px;
+        }
+
+        /* ...existing code... */
     </style>
 </head>
 <body>
@@ -431,7 +677,7 @@
             <div class="input-section">
                 <div class="input-header">
                     <label class="input-label">输入内容</label>
-                    <button class="demo-button-inline" onclick="app.fillRandomDemo()">
+                    <button class="demo-button-inline" id="demoButton">
                         <i class="fas fa-lightbulb"></i>
                         <span>给我一个示例</span>
                     </button>
@@ -627,9 +873,12 @@
             }
 
             initEventListeners() {
+                console.log('正在初始化事件监听器...');
+                
                 // 组件选择
                 document.querySelectorAll('.component-option').forEach(option => {
                     option.addEventListener('click', (e) => {
+                        console.log('组件选择:', option.dataset.component);
                         document.querySelectorAll('.component-option').forEach(o => o.classList.remove('selected'));
                         option.classList.add('selected');
                         this.selectedComponent = option.dataset.component;
@@ -637,13 +886,34 @@
                 });
 
                 // 生成按钮
-                document.getElementById('generateBtn').addEventListener('click', () => {
-                    this.generatePreview();
-                });
+                const generateBtn = document.getElementById('generateBtn');
+                if (generateBtn) {
+                    generateBtn.addEventListener('click', () => {
+                        console.log('生成按钮被点击了！');
+                        this.generatePreview();
+                    });
+                    console.log('生成按钮事件监听器已绑定');
+                } else {
+                    console.error('找不到生成按钮！');
+                }
+
+                // 示例按钮
+                const demoButton = document.getElementById('demoButton');
+                if (demoButton) {
+                    demoButton.addEventListener('click', () => {
+                        this.fillRandomDemo();
+                    });
+                    console.log('示例按钮事件监听器已绑定');
+                } else {
+                    console.error('找不到示例按钮！');
+                }
             }
 
             async generatePreview() {
+                console.log('generatePreview方法被调用');
                 const userInput = document.getElementById('userInput').value.trim();
+                console.log('用户输入:', userInput);
+                console.log('选择的组件:', this.selectedComponent);
                 
                 if (!userInput) {
                     alert('请输入内容');
@@ -712,9 +982,29 @@
 
             // 直接调用Azure OpenAI（本地环境）
             async callAzureOpenAIDirect(userInput, componentType) {
-                // 本地测试配置 - 直接使用Azure OpenAI
-                const apiKey = 'af60f8ec72694fc8bbb785f492ae9a02';
-                const endpoint = 'https://hanc04-openai-sweden-central.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-01';
+                // 优先使用本地配置文件中的设置
+                let apiKey, baseEndpoint, deployment, apiVersion;
+                
+                if (window.LOCAL_CONFIG) {
+                    apiKey = window.LOCAL_CONFIG.AZURE_OPENAI_API_KEY;
+                    baseEndpoint = window.LOCAL_CONFIG.AZURE_OPENAI_ENDPOINT;
+                    deployment = window.LOCAL_CONFIG.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+                    apiVersion = window.LOCAL_CONFIG.AZURE_OPENAI_API_VERSION || '2024-02-01';
+                } else {
+                    // 本地开发时的硬编码配置（仅本地可见）
+                    apiKey = 'af60f8ec72694fc8bbb785f492ae9a02';
+                    baseEndpoint = 'https://xxx-your-azure-endpoint.openai.azure.com'; // 改成你的实际endpoint
+                    deployment = 'gpt-4o';
+                    apiVersion = '2024-02-01';
+                }
+                
+                // 如果endpoint还是示例地址，使用模拟数据
+                if (!baseEndpoint || baseEndpoint.includes('xxx-your-azure-endpoint')) {
+                    console.warn('请在代码中配置真实的Azure OpenAI endpoint，当前使用模拟数据');
+                    return this.generateMockData(userInput, componentType);
+                }
+                
+                const endpoint = `${baseEndpoint.replace(/\/$/, '')}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
                 
                 // 构建prompt
                 const prompt = this.buildPrompt(userInput, componentType);
@@ -805,7 +1095,9 @@
                 // 构建prompt
                 const prompt = this.buildPrompt(userInput, componentType);
                 
-                console.log('发送给AI的prompt:', prompt);
+                console.log('生产环境 - 发送给AI的prompt:', prompt);
+                console.log('当前URL:', window.location.href);
+                console.log('组件类型:', componentType);
 
                 const requestBody = {
                     userInput: userInput,
@@ -814,6 +1106,7 @@
                 };
 
                 try {
+                    console.log('正在调用代理API /api/openai...');
                     const response = await fetch('/api/openai', {
                         method: 'POST',
                         headers: {
@@ -822,20 +1115,76 @@
                         body: JSON.stringify(requestBody)
                     });
 
+                    console.log('代理API响应状态:', response.status, response.statusText);
+
                     if (!response.ok) {
-                        console.error('代理API响应错误:', response.status, response.statusText);
+                        const errorText = await response.text();
+                        console.error('代理API响应错误:', response.status, response.statusText, errorText);
                         // 如果API调用失败，回退到模拟数据
+                        console.warn('回退到模拟数据生成');
                         return this.generateMockData(userInput, componentType);
                     }
 
-                    const data = await response.json();
-                    console.log('通过代理获取的AI响应:', data);
+                    const jsonData = await response.json();
+                    console.log('代理API返回的数据:', jsonData);
                     
-                    return data;
+                    // 验证返回的数据结构
+                    if (this.validateComponentData(jsonData, componentType)) {
+                        return jsonData;
+                    } else {
+                        console.warn('API返回的数据结构不正确，使用模拟数据');
+                        return this.generateMockData(userInput, componentType);
+                    }
                 } catch (error) {
                     console.error('代理API调用错误:', error);
+                    console.warn('网络错误，回退到模拟数据');
                     // 如果网络错误，回退到模拟数据
                     return this.generateMockData(userInput, componentType);
+                }
+            }
+
+            // 验证组件数据结构的完整性
+            validateComponentData(data, componentType) {
+                console.log('验证组件数据:', componentType, data);
+                
+                if (!data || typeof data !== 'object') {
+                    console.error('数据不是有效的对象:', data);
+                    return false;
+                }
+
+                switch (componentType) {
+                    case 'ai-transform':
+                        if (!data.title || !Array.isArray(data.steps)) {
+                            console.error('简约列表组件数据结构错误:', data);
+                            return false;
+                        }
+                        for (const step of data.steps) {
+                            if (!step.title || !step.description) {
+                                console.error('步骤数据结构错误:', step);
+                                return false;
+                            }
+                        }
+                        console.log('简约列表组件数据验证通过');
+                        return true;
+                    case 'core-value':
+                        const valid = data.title && Array.isArray(data.values);
+                        console.log('图标列表组件数据验证:', valid);
+                        return valid;
+                    case 'table-component':
+                        const tableValid = data.title && Array.isArray(data.headers) && Array.isArray(data.rows);
+                        console.log('表格组件数据验证:', tableValid);
+                        return tableValid;
+                    case 'chart-component':
+                        const chartValid = data.title && Array.isArray(data.chartData);
+                        console.log('图表组件数据验证:', chartValid);
+                        return chartValid;
+                    case 'left-right-component':
+                        const comparisonValid = data.title && data.leftSide && data.rightSide;
+                        console.log('对比组件数据验证:', comparisonValid);
+                        return comparisonValid;
+                    default:
+                        console.log('未知组件类型，跳过验证');
+                        return true;
                 }
             }
 
@@ -1542,14 +1891,16 @@
                         <div class="preview-header">
                             <h1 class="preview-title">${title}</h1>
                         </div>
-                        <div class="values-grid">
+                        <div class="values-container">
                             ${values.map((value, index) => `
                                 <div class="value-item">
                                     <div class="value-icon">
                                         <i class="fas fa-star"></i>
                                     </div>
-                                    <h3 class="value-title">${value.title}</h3>
-                                    <p class="value-description">${value.description}</p>
+                                    <div class="value-content">
+                                        <h3 class="value-title">${value.title}</h3>
+                                        <p class="value-description">${value.description}</p>
+                                    </div>
                                 </div>
                             `).join('')}
                         </div>
@@ -2026,6 +2377,10 @@
         
         // 页面加载时清除可能的旧缓存，确保使用最新的代码模板
         window.addEventListener('load', function() {
+            console.log('页面加载完成，环境检测:', app.isLocalEnvironment() ? '本地环境' : '生产环境');
+            console.log('当前URL:', window.location.href);
+            console.log('用户代理:', navigator.userAgent);
+            
             // 清除可能影响Prompt使用的旧缓存
             const debuggedPromptData = localStorage.getItem('debuggedPrompt');
             if (debuggedPromptData) {
@@ -2042,6 +2397,17 @@
                     console.log('已清除无效的调试器Prompt缓存');
                 }
             }
+            
+            // 检查关键元素是否存在
+            const generateBtn = document.getElementById('generateBtn');
+            const userInput = document.getElementById('userInput');
+            const componentOptions = document.querySelectorAll('.component-option');
+            
+            console.log('关键元素检查:');
+            console.log('- 生成按钮:', generateBtn ? '✓' : '✗');
+            console.log('- 输入框:', userInput ? '✓' : '✗');
+            console.log('- 组件选项:', componentOptions.length, '个');
+            
             console.log('AI PPT组件生成器已加载，将优先使用代码中的Prompt模板');
         });
     </script>
