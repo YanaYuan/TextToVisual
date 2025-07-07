@@ -1,25 +1,23 @@
 {
   "version": 2,
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/",
-      "destination": "/ai-ppt-generator.html"
+      "src": "*.html",
+      "use": "@vercel/static"
     },
     {
-      "source": "/api-diagnosis",
-      "destination": "/api-diagnosis.html"
+      "src": "api/*.js",
+      "use": "@vercel/node"
     }
   ],
-  "redirects": [
+  "routes": [
     {
-      "source": "/index.html",
-      "destination": "/",
-      "permanent": false
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/ai-ppt-generator.html"
     }
   ]
 }

@@ -1,5 +1,5 @@
 // 超简单的环境变量检查API
-export default function handler(req, res) {
+module.exports = function handler(req, res) {
     // 基本的CORS设置
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
