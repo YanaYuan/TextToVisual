@@ -13,4 +13,4 @@ module.exports = function handler(req, res) {
         timestamp: new Date().toISOString(),
         success: true
     });
-}
+};

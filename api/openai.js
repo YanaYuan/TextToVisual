@@ -156,4 +156,4 @@ module.exports = async function handler(req, res) {
             details: '请检查API端点和密钥配置'
         });
     }
-}
+};
