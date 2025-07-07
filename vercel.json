@@ -1,55 +1,25 @@
 {
   "version": 2,
-  "builds": [
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
     {
-      "src": "*.html",
-      "use": "@vercel/static"
+      "source": "/",
+      "destination": "/ai-ppt-generator.html"
     },
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "source": "/api-diagnosis",
+      "destination": "/api-diagnosis.html"
     }
   ],
-  "routes": [
+  "redirects": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/vercel-diagnostic.html",
-      "dest": "/vercel-diagnostic.html"
-    },
-    {
-      "src": "/test-api.html",
-      "dest": "/test-api.html"
-    },
-    {
-      "src": "/api-test-simple.html",
-      "dest": "/api-test-simple.html"
-    },
-    {
-      "src": "/debug-api.html",
-      "dest": "/debug-api.html"
-    },
-    {
-      "src": "/basic-test.html",
-      "dest": "/basic-test.html"
-    },
-    {
-      "src": "/api-config-tester.html",
-      "dest": "/api-config-tester.html"
-    },
-    {
-      "src": "/",
-      "dest": "/ai-ppt-generator.html"
-    },
-    {
-      "src": "/(.*\\.html)",
-      "dest": "/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/ai-ppt-generator.html"
+      "source": "/index.html",
+      "destination": "/",
+      "permanent": false
     }
   ]
 }

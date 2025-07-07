@@ -17,9 +17,16 @@ export default async function handler(req, res) {
     }
 
     try {
-        // 从环境变量中获取API密钥和端点
-        const apiKey = process.env.AZURE_OPENAI_API_KEY;
-        const baseEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+        // 优先用环境变量，否则本地用硬编码
+        let apiKey = process.env.AZURE_OPENAI_API_KEY;
+        let baseEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+
+        // 本地开发时自动填充（仅本地可见，生产环境不要上传此密钥）
+        if (!apiKey || !baseEndpoint) {
+            // 本地调试用的占位符配置 - 请替换为您的实际配置
+            apiKey = 'your-azure-openai-api-key-here'; 
+            baseEndpoint = 'https://your-resource-name.openai.azure.com'; 
+        }
 
         if (!apiKey || !baseEndpoint) {
             return res.status(500).json({ error: 'API configuration missing' });
