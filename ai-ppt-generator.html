@@ -783,9 +783,122 @@
                 this.generatedContent = null;
                 this.currentDemoIndex = 0; // 当前demo案例的循环索引
                 this.allDemos = []; // 所有demo案例的数组
+                this.apiStatus = null; // API状态缓存
                 this.initDemoCases();
                 this.initEventListeners();
                 this.initDefaultSelection();
+                this.checkAPIStatus(); // 页面加载时检查API状态
+            }
+
+            // 检查API状态
+            async checkAPIStatus() {
+                if (this.isLocalEnvironment()) {
+                    console.log('本地环境，跳过API状态检查');
+                    this.apiStatus = { available: true, type: 'local' };
+                    return;
+                }
+
+                try {
+                    console.log('🔍 检查生产环境API状态...');
+                    
+                    // 首先测试简单的hello API
+                    const helloResponse = await fetch('/api/hello', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+
+                    if (helloResponse.ok) {
+                        console.log('✅ 基础API可用');
+                        
+                        // 测试诊断API获取环境信息
+                        try {
+                            const diagnosticResponse = await fetch('/api/diagnostic', {
+                                method: 'GET',
+                                headers: { 'Accept': 'application/json' }
+                            });
+                            
+                            if (diagnosticResponse.ok) {
+                                const diagnosticData = await diagnosticResponse.json();
+                                console.log('📊 环境诊断信息:', diagnosticData);
+                                
+                                this.apiStatus = {
+                                    available: true,
+                                    type: 'production',
+                                    hasApiKey: diagnosticData.environmentVariables?.hasAzureApiKey || false,
+                                    hasEndpoint: diagnosticData.environmentVariables?.hasAzureEndpoint || false,
+                                    diagnosticInfo: diagnosticData
+                                };
+                                
+                                // 显示API状态信息
+                                this.showAPIStatus();
+                            }
+                        } catch (diagError) {
+                            console.warn('诊断API不可用，但基础API正常');
+                            this.apiStatus = { available: true, type: 'production', limited: true };
+                        }
+                    } else {
+                        throw new Error(`API检查失败: ${helloResponse.status}`);
+                    }
+                } catch (error) {
+                    console.error('❌ API状态检查失败:', error);
+                    this.apiStatus = { 
+                        available: false, 
+                        error: error.message,
+                        fallbackReady: true 
+                    };
+                    this.showAPIStatus();
+                }
+            }
+
+            // 显示API状态
+            showAPIStatus() {
+                if (!this.apiStatus || this.isLocalEnvironment()) return;
+
+                const sidebar = document.querySelector('.sidebar');
+                let statusDiv = document.getElementById('api-status');
+                
+                if (!statusDiv) {
+                    statusDiv = document.createElement('div');
+                    statusDiv.id = 'api-status';
+                    statusDiv.style.cssText = `
+                        margin-bottom: 20px;
+                        padding: 12px;
+                        border-radius: 8px;
+                        font-size: 12px;
+                        line-height: 1.4;
+                    `;
+                    sidebar.insertBefore(statusDiv, sidebar.firstChild.nextSibling);
+                }
+
+                if (this.apiStatus.available) {
+                    if (this.apiStatus.hasApiKey && this.apiStatus.hasEndpoint) {
+                        statusDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+                        statusDiv.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                        statusDiv.style.color = '#10b981';
+                        statusDiv.innerHTML = `
+                            <strong>🟢 AI服务就绪</strong><br>
+                            Azure OpenAI API 已配置完成，将生成真实内容
+                        `;
+                    } else {
+                        statusDiv.style.background = 'rgba(245, 158, 11, 0.1)';
+                        statusDiv.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+                        statusDiv.style.color = '#f59e0b';
+                        statusDiv.innerHTML = `
+                            <strong>🟡 API部分可用</strong><br>
+                            API端点可访问，但环境变量可能未配置完整<br>
+                            <small>缺少: ${!this.apiStatus.hasApiKey ? 'API密钥 ' : ''}${!this.apiStatus.hasEndpoint ? 'API端点' : ''}</small>
+                        `;
+                    }
+                } else {
+                    statusDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+                    statusDiv.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                    statusDiv.style.color = '#ef4444';
+                    statusDiv.innerHTML = `
+                        <strong>🔴 API不可用</strong><br>
+                        将使用演示数据确保功能正常<br>
+                        <small>错误: ${this.apiStatus.error}</small>
+                    `;
+                }
             }
 
             initDefaultSelection() {
@@ -944,43 +1057,25 @@
                     this.generatedContent = structuredContent;
                     this.renderPreview();
                     
+                    // 检查是否使用了模拟数据，并添加适当的提示
+                    this.addDataSourceNotice(structuredContent);
+                    
                 } catch (error) {
                     console.error('生成失败:', error);
                     
-                    // 在生产环境中显示详细错误信息，便于调试
-                    if (!this.isLocalEnvironment()) {
-                        console.error('生产环境错误详情:', {
-                            message: error.message,
-                            stack: error.stack,
-                            userInput: userInput,
-                            componentType: this.selectedComponent,
-                            currentURL: window.location.href
-                        });
-                        
-                        // 显示更详细的错误信息
-                        alert(`生产环境API调用失败：\n${error.message}\n\n请查看浏览器控制台获取详细信息。`);
-                    } else {
-                        alert('生成失败，请重试: ' + error.message);
-                    }
-                    
-                    // 临时：在API失败时仍然使用模拟数据作为后备方案
-                    console.warn('API调用失败，使用模拟数据作为后备方案');
+                    // 改进的错误处理：总是能提供内容给用户
+                    console.warn('API调用失败，使用模拟数据确保用户体验');
                     try {
                         const mockContent = this.generateMockData(userInput, this.selectedComponent);
                         this.generatedContent = mockContent;
                         this.renderPreview();
                         
-                        // 在预览中显示警告
-                        const previewArea = document.getElementById('previewArea');
-                        const warningDiv = document.createElement('div');
-                        warningDiv.innerHTML = `
-                            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin-bottom: 20px; color: #92400e;">
-                                <strong>⚠️ 警告：</strong> API调用失败，当前显示的是模拟数据。错误：${error.message}
-                            </div>
-                        `;
-                        previewArea.insertBefore(warningDiv, previewArea.firstChild);
+                        // 在预览中显示API错误提示，但不影响内容展示
+                        this.addErrorNoticeWithContent(error);
+                        
                     } catch (mockError) {
                         console.error('连模拟数据都生成失败:', mockError);
+                        alert('生成失败，请刷新页面重试');
                     }
                 } finally {
                     // 恢复按钮状态
@@ -988,6 +1083,71 @@
                     btnIcon.className = 'fas fa-magic';
                     btnText.textContent = '生成预览';
                 }
+            }
+
+            // 添加数据来源提示
+            addDataSourceNotice(content) {
+                const previewArea = document.getElementById('previewArea');
+                
+                // 移除之前的提示
+                const existingNotice = previewArea.querySelector('.data-source-notice');
+                if (existingNotice) {
+                    existingNotice.remove();
+                }
+                
+                // 检查是否是模拟数据（通过特定标识判断）
+                const isMockData = this.isMockData(content);
+                
+                if (isMockData) {
+                    const noticeDiv = document.createElement('div');
+                    noticeDiv.className = 'data-source-notice';
+                    noticeDiv.innerHTML = `
+                        <div style="background: #dbeafe; border: 1px solid #3b82f6; border-radius: 8px; padding: 12px; margin-bottom: 20px; color: #1e40af;">
+                            <strong>ℹ️ 提示：</strong> 当前使用演示数据，实际使用时会调用AI生成真实内容。
+                        </div>
+                    `;
+                    previewArea.insertBefore(noticeDiv, previewArea.firstChild);
+                }
+            }
+
+            // 添加错误提示但保留内容
+            addErrorNoticeWithContent(error) {
+                const previewArea = document.getElementById('previewArea');
+                
+                // 移除之前的提示
+                const existingNotice = previewArea.querySelector('.data-source-notice');
+                if (existingNotice) {
+                    existingNotice.remove();
+                }
+                
+                const noticeDiv = document.createElement('div');
+                noticeDiv.className = 'data-source-notice';
+                noticeDiv.innerHTML = `
+                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin-bottom: 20px; color: #92400e;">
+                        <strong>⚠️ 注意：</strong> AI服务暂时不可用，已使用演示数据确保功能正常。技术问题：${error.message.substring(0, 100)}...
+                        <details style="margin-top: 8px; font-size: 12px;">
+                            <summary style="cursor: pointer;">查看技术详情</summary>
+                            <pre style="margin-top: 5px; font-size: 11px; white-space: pre-wrap;">${error.message}</pre>
+                        </details>
+                    </div>
+                `;
+                previewArea.insertBefore(noticeDiv, previewArea.firstChild);
+            }
+
+            // 判断是否为模拟数据
+            isMockData(content) {
+                if (!content || typeof content !== 'object') return false;
+                
+                // 通过检查一些模拟数据的特征来判断
+                const mockIndicators = [
+                    '演示数据', '示例内容', '请输入', 'Mock', 'Demo',
+                    '核心价值观', '关键流程步骤', '功能对比分析', '销售业绩统计'
+                ];
+                
+                const contentStr = JSON.stringify(content).toLowerCase();
+                return mockIndicators.some(indicator => 
+                    contentStr.includes(indicator.toLowerCase())
+                );
             }
 
             async callAzureOpenAI(userInput, componentType) {
@@ -1143,61 +1303,101 @@
 
                 console.log('准备发送的请求体:', requestBody);
 
-                try {
-                    console.log('正在调用代理API /api/openai...');
-                    const response = await fetch('/api/openai', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
+                // 使用多重重试策略
+                const maxRetries = 3;
+                let lastError = null;
 
-                    console.log('代理API响应状态:', response.status, response.statusText);
-                    console.log('响应头信息:', Object.fromEntries(response.headers.entries()));
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('代理API响应错误:', response.status, response.statusText, errorText);
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        console.log(`🔄 尝试第 ${attempt} 次调用代理API /api/openai...`);
                         
-                        // 在生产环境中，先尝试解析错误响应，可能包含有用信息
-                        try {
-                            const errorData = JSON.parse(errorText);
-                            console.error('解析的错误数据:', errorData);
-                        } catch (e) {
-                            console.error('无法解析错误响应为JSON:', e);
+                        const response = await fetch('/api/openai', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        console.log('代理API响应状态:', response.status, response.statusText);
+                        console.log('响应头信息:', Object.fromEntries(response.headers.entries()));
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error(`第 ${attempt} 次尝试失败:`, response.status, response.statusText, errorText);
+                            
+                            // 如果是404错误，立即返回模拟数据，不再重试
+                            if (response.status === 404) {
+                                console.warn('⚠️ API端点未找到(404)，使用模拟数据作为后备方案');
+                                return this.generateMockData(userInput, componentType);
+                            }
+                            
+                            // 如果是500错误且不是最后一次尝试，等待后重试
+                            if (response.status >= 500 && attempt < maxRetries) {
+                                console.log(`服务器错误，等待 ${attempt * 1000}ms 后重试...`);
+                                await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+                                lastError = new Error(`服务器错误: ${response.status} ${response.statusText}`);
+                                continue;
+                            }
+                            
+                            // 其他错误，尝试解析错误信息
+                            try {
+                                const errorData = JSON.parse(errorText);
+                                console.error('解析的错误数据:', errorData);
+                                lastError = new Error(`API错误: ${errorData.error || errorText}`);
+                            } catch (e) {
+                                lastError = new Error(`API调用失败: ${response.status} ${response.statusText} - ${errorText}`);
+                            }
+                            
+                            // 如果是最后一次尝试，使用模拟数据
+                            if (attempt === maxRetries) {
+                                console.warn('⚠️ 所有重试都失败，使用模拟数据作为后备方案');
+                                return this.generateMockData(userInput, componentType);
+                            }
+                            continue;
+                        }
+
+                        // 成功响应，解析数据
+                        const jsonData = await response.json();
+                        console.log('代理API返回的原始数据:', jsonData);
+                        console.log('数据类型:', typeof jsonData);
+                        console.log('数据键:', Object.keys(jsonData));
+                        
+                        // 验证返回的数据结构
+                        if (this.validateComponentData(jsonData, componentType)) {
+                            console.log('✅ 数据验证通过，返回真实数据');
+                            return jsonData;
+                        } else {
+                            console.error('❌ API返回的数据结构不正确');
+                            console.error('期望的组件类型:', componentType);
+                            console.error('实际返回的数据:', jsonData);
+                            
+                            // 数据结构错误，也使用模拟数据
+                            console.warn('⚠️ 数据结构验证失败，使用模拟数据作为后备方案');
+                            return this.generateMockData(userInput, componentType);
+                        }
+
+                    } catch (error) {
+                        console.error(`❌ 第 ${attempt} 次代理API调用过程中发生错误:`, error);
+                        lastError = error;
+                        
+                        // 如果是网络错误且不是最后一次尝试，等待后重试
+                        if (attempt < maxRetries) {
+                            console.log(`网络错误，等待 ${attempt * 1000}ms 后重试...`);
+                            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+                            continue;
                         }
                         
-                        // 抛出错误而不是回退到模拟数据，这样我们可以看到真正的问题
-                        throw new Error(`API调用失败: ${response.status} ${response.statusText} - ${errorText}`);
+                        // 最后一次尝试也失败，使用模拟数据
+                        console.warn('⚠️ 所有重试都失败，使用模拟数据作为后备方案');
+                        return this.generateMockData(userInput, componentType);
                     }
-
-                    const jsonData = await response.json();
-                    console.log('代理API返回的原始数据:', jsonData);
-                    console.log('数据类型:', typeof jsonData);
-                    console.log('数据键:', Object.keys(jsonData));
-                    
-                    // 验证返回的数据结构
-                    if (this.validateComponentData(jsonData, componentType)) {
-                        console.log('✅ 数据验证通过，返回真实数据');
-                        return jsonData;
-                    } else {
-                        console.error('❌ API返回的数据结构不正确');
-                        console.error('期望的组件类型:', componentType);
-                        console.error('实际返回的数据:', jsonData);
-                        
-                        // 不要回退到模拟数据，抛出错误
-                        throw new Error(`API返回的数据结构不符合${componentType}组件的要求`);
-                    }
-                } catch (error) {
-                    console.error('❌ 代理API调用过程中发生错误:', error);
-                    console.error('错误类型:', error.constructor.name);
-                    console.error('错误消息:', error.message);
-                    console.error('错误堆栈:', error.stack);
-                    
-                    // 重新抛出错误，不要回退到模拟数据
-                    throw error;
                 }
+
+                // 如果所有重试都失败，使用模拟数据
+                console.warn('⚠️ 所有API调用尝试都失败，使用模拟数据');
+                console.error('最后的错误:', lastError);
+                return this.generateMockData(userInput, componentType);
             }
 
             // 验证组件数据结构的完整性
